@@ -2,6 +2,9 @@ add_library(logger_core
   src/level.cpp
   src/posix_time_source.cpp
   src/dummy_time_source.cpp
+  src/test_sink.cpp
+  src/logger.cpp
+  src/logger_registry.cpp
 )
 
 add_library(sim_logger::core ALIAS logger_core)

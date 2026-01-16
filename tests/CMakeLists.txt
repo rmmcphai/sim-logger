@@ -10,9 +10,11 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(Catch2)
 
 add_executable(sim_logger_tests
+  test_main.cpp
   test_level.cpp
   test_time_source.cpp
   test_log_record.cpp
+  test_sprint2_logger_registry.cpp
 )
 
 target_link_libraries(sim_logger_tests
