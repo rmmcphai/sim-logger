@@ -2,9 +2,11 @@
 
 #include "logger/logger_registry.hpp"
 #include "logger/test_sink.hpp"
+#include "logger/logger.hpp"
 
 #include <thread>
 #include <vector>
+#include <stdexcept>
 
 namespace {
 
@@ -114,4 +116,30 @@ TEST_CASE("Sinks are inherited dynamically when not overridden", "[sprint2][regi
   REQUIRE(sink1->size() == 1);
   REQUIRE(sink2->size() == 1);
 }
+
+namespace sim_logger {
+struct ThrowingSink final : ISink {
+  void write(const LogRecord&) override { throw std::runtime_error("boom"); }
+  void flush() override {}
+};
+} // namespace sim_logger
+
+TEST_CASE("Logger::log swallows sink exceptions and continues") {
+  using namespace sim_logger;
+
+  auto logger = std::make_shared<Logger>("root");
+
+  auto good = std::make_shared<TestSink>();
+  auto bad  = std::make_shared<ThrowingSink>();
+
+  logger->set_sinks({bad, good});
+
+  LogRecord r(Level::Info, 1.0, 2.0, 3, std::this_thread::get_id(),
+              "f.cpp", 10, "fn", "root", {}, "msg");
+
+  REQUIRE_NOTHROW(logger->log(r));
+  REQUIRE(logger->sink_failures_count() == 1);
+  REQUIRE(good->size() == 1);
+}
+
 

@@ -20,6 +20,7 @@ add_executable(sim_logger_tests
   test_time_source.cpp
   test_log_record.cpp
   test_sprint2_logger_registry.cpp
+  test_pattern_formatter.cpp
 )
 
 target_link_libraries(sim_logger_tests

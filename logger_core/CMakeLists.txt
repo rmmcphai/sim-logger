@@ -5,6 +5,8 @@ add_library(logger_core
   src/test_sink.cpp
   src/logger.cpp
   src/logger_registry.cpp
+  src/pattern_formatter.cpp
+  src/global_time.cpp
 )
 
 
@@ -18,7 +20,7 @@ target_include_directories(logger_core
 
 # Keep core dependency-free in Sprint 1.
 # (Later sprints may add fmt, json, etc.)
-target_compile_features(logger_core PRIVATE cxx_std_17)
+target_compile_features(logger_core PUBLIC cxx_std_17)
 
 find_package(Threads REQUIRED)
 target_link_libraries(logger_core PRIVATE Threads::Threads)

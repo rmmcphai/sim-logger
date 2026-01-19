@@ -25,7 +25,7 @@ class TestSink final : public ISink {
   /**
    * @brief Store a copy of the record for later inspection.
    */
-  void write(const LogRecord& record) noexcept override;
+  void write(const LogRecord& record) override;
 
   /**
    * @brief No-op for this sink.

@@ -1,7 +1,5 @@
 #pragma once
 
-#include "logger/logger.hpp"
-
 #include <memory>
 #include <mutex>
 #include <string>
@@ -9,45 +7,59 @@
 
 namespace sim_logger {
 
+class Logger;
+
 /**
- * @file logger_registry.hpp
- * @brief Provides a central registry for hierarchical loggers.
+ * @brief Global registry for named loggers.
  *
- * @details
- * The registry ensures that:
- *  - Each hierarchical name refers to a single Logger instance.
- *  - Parent loggers exist and are linked automatically.
- *  - Children can inherit configuration from parents.
+ * The registry creates and caches loggers by name. It also establishes the
+ * parent-child hierarchy based on dot-separated names:
+ * - "root" has no parent.
+ * - "a.b.c" has parent "a.b".
  *
- * Example:
- *  - get_logger("vehicle1.propulsion") creates (if needed) both
- *    "vehicle1" and "vehicle1.propulsion" and links the child to the parent.
+ * Thread-safety:
+ * - get_logger() is safe to call concurrently.
+ * - Returned shared_ptr instances are stable (cached).
  */
-class LoggerRegistry {
+class LoggerRegistry final {
  public:
   /**
-   * @brief Access the process-wide registry instance.
+   * @brief Returns the singleton registry instance.
    */
-  static LoggerRegistry& instance() noexcept;
+  static LoggerRegistry& instance();
 
   /**
-   * @brief Get or create a logger for the given hierarchical name.
+   * @brief Get (or create) a logger with the specified name.
+   * @param name Logger name. "root" is treated as the root logger.
+   * @return Shared pointer to the logger.
+   *
+   * If the logger does not exist, it is created and inserted into the registry.
+   * Parent loggers are created as needed.
    */
   std::shared_ptr<Logger> get_logger(const std::string& name);
 
   /**
-   * @brief Remove all registered loggers (primarily for unit tests).
+   * @brief Remove all loggers from the registry.
+   *
+   * Useful for tests to ensure clean state between cases.
    */
-  void clear() noexcept;
+  void clear();
 
  private:
   LoggerRegistry() = default;
 
-  std::shared_ptr<Logger> get_or_create_locked_(const std::string& name);
-  static std::string parent_name_(const std::string& name);
+  /**
+   * @brief Compute the parent name for a dot-separated logger name.
+   * @param name Child logger name.
+   * @return Parent name, or empty string if none.
+   */
+  static std::string parent_name_for(const std::string& name);
 
+  /// Protects the map of cached loggers.
   std::mutex mutex_;
+
+  /// Cached loggers keyed by name.
   std::unordered_map<std::string, std::shared_ptr<Logger>> loggers_;
 };
 
-} // namespace sim_logger
+}  // namespace sim_logger

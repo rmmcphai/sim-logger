@@ -2,7 +2,7 @@
 
 namespace sim_logger {
 
-void TestSink::write(const LogRecord& record) noexcept {
+void TestSink::write(const LogRecord& record) {
   std::lock_guard<std::mutex> lock(mutex_);
   records_.push_back(record);
 }

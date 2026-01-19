@@ -21,6 +21,14 @@ namespace sim_logger {
  */
 class DummyTimeSource final : public ITimeSource {
  public:
+  public:
+  /**
+   * @brief Default-constructs a zeroed time source.
+   *
+   * This exists to support GlobalTime’s default fallback construction.
+   */
+  DummyTimeSource() noexcept : DummyTimeSource(0.0, 0.0, 0) {}
+
   /**
    * @brief Construct a dummy time source with explicit initial values.
    *

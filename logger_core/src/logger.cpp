@@ -1,9 +1,11 @@
 #include "logger/logger.hpp"
 
+#include <exception>
+
 namespace sim_logger {
 
 Logger::Logger(std::string name)
-  : name_(std::move(name)) {}
+    : name_(std::move(name)) {}
 
 const std::string& Logger::name() const noexcept {
   return name_;
@@ -21,37 +23,30 @@ void Logger::clear_level_override() noexcept {
 }
 
 Level Logger::effective_level() const noexcept {
-  // Copy shared state under lock, then do any recursion without holding the lock.
-  bool overridden = false;
-  Level local_level = Level::Info;
-  std::shared_ptr<Logger> parent_shared;
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
-    overridden = level_overridden_;
-    local_level = level_;
-    parent_shared = parent_.lock();
+  std::lock_guard<std::mutex> lock(mutex_);
+
+  if (level_overridden_) {
+    return level_;
   }
 
-  if (overridden || !parent_shared) {
-    return local_level;
+  auto parent = parent_.lock();
+  if (parent) {
+    return parent->effective_level();
   }
 
-  return parent_shared->effective_level();
+  return level_;
 }
 
 void Logger::add_sink(std::shared_ptr<ISink> sink) {
-  if (!sink) {
-    return;
-  }
   std::lock_guard<std::mutex> lock(mutex_);
-  sinks_overridden_ = true;
   sinks_.push_back(std::move(sink));
+  sinks_overridden_ = true;
 }
 
 void Logger::set_sinks(std::vector<std::shared_ptr<ISink>> sinks) {
   std::lock_guard<std::mutex> lock(mutex_);
-  sinks_overridden_ = true;
   sinks_ = std::move(sinks);
+  sinks_overridden_ = true;
 }
 
 void Logger::clear_sink_override() noexcept {
@@ -61,20 +56,41 @@ void Logger::clear_sink_override() noexcept {
 }
 
 std::vector<std::shared_ptr<ISink>> Logger::effective_sinks() const {
-  bool overridden = false;
-  std::vector<std::shared_ptr<ISink>> local_sinks;
-  std::shared_ptr<Logger> parent_shared;
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
-    overridden = sinks_overridden_;
-    local_sinks = sinks_;
-    parent_shared = parent_.lock();
+  std::lock_guard<std::mutex> lock(mutex_);
+
+  if (sinks_overridden_) {
+    return sinks_;
   }
 
-  if (overridden || !parent_shared) {
-    return local_sinks;
+  auto parent = parent_.lock();
+  if (parent) {
+    return parent->effective_sinks();
   }
-  return parent_shared->effective_sinks();
+
+  return {};
+}
+
+std::shared_ptr<Logger> Logger::parent() const noexcept {
+  return parent_.lock();
+}
+
+void Logger::log(const LogRecord& record) noexcept {
+  try {
+    if (record.level() < effective_level()) {
+      return;
+    }
+
+    const auto sinks = effective_sinks();
+    for (const auto& sink : sinks) {
+      try {
+        sink->write(record);
+      } catch (...) {
+        sink_failures_count_.fetch_add(1, std::memory_order_relaxed);
+      }
+    }
+  } catch (...) {
+    dropped_records_count_.fetch_add(1, std::memory_order_relaxed);
+  }
 }
 
 void Logger::set_parent(std::shared_ptr<Logger> parent) noexcept {
@@ -82,23 +98,12 @@ void Logger::set_parent(std::shared_ptr<Logger> parent) noexcept {
   parent_ = parent;
 }
 
-std::shared_ptr<Logger> Logger::parent() const noexcept {
-  std::lock_guard<std::mutex> lock(mutex_);
-  return parent_.lock();
+std::uint64_t Logger::sink_failures_count() const noexcept {
+  return sink_failures_count_.load(std::memory_order_relaxed);
 }
 
-void Logger::log(const LogRecord& record) noexcept {
-  const Level threshold = effective_level();
-  if (!is_at_least(record.level(), threshold)) {
-    return;
-  }
-
-  const auto sinks = effective_sinks();
-  for (const auto& sink : sinks) {
-    if (sink) {
-      sink->write(record);
-    }
-  }
+std::uint64_t Logger::dropped_records_count() const noexcept {
+  return dropped_records_count_.load(std::memory_order_relaxed);
 }
 
-} // namespace sim_logger
+}  // namespace sim_logger
