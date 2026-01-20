@@ -33,6 +33,16 @@ cmake --build build
 ctest --test-dir build
 ```
 
+## Examples
+
+Examples are built as part of the normal build.
+
+```bash
+./build/examples/sim_logger_example_cpp
+./build/examples/sim_logger_example_async_cpp
+./build/examples/sim_logger_example_c
+```
+
 ## Targets
 
 ### Core Library

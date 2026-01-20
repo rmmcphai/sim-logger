@@ -15,6 +15,7 @@ add_executable(sim_logger_tests
   test_log_macros.cpp
   test_c_api.c
   test_c_api.cpp
+  test_async_queue_and_sink.cpp
 )
 
 target_link_libraries(sim_logger_tests
