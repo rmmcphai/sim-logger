@@ -29,6 +29,13 @@ target_compile_features(logger_core PUBLIC cxx_std_17)
 find_package(Threads REQUIRED)
 target_link_libraries(logger_core PRIVATE Threads::Threads)
 
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  # GCC 9+ typically does not need stdc++fs, GCC 8 often does.
+  if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
+    target_link_libraries(logger_core PUBLIC stdc++fs)
+  endif()
+endif()
+
 # Warnings (inherit top-level flags, but allow per-target additions later)
 if(MSVC)
   target_compile_options(logger_core PRIVATE /W4)
