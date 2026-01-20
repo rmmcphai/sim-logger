@@ -81,9 +81,14 @@ void Logger::log(const LogRecord& record) noexcept {
     }
 
     const auto sinks = effective_sinks();
+    const bool do_flush = effective_immediate_flush();
+
     for (const auto& sink : sinks) {
       try {
         sink->write(record);
+        if (do_flush) {
+          sink->flush();
+        }
       } catch (...) {
         sink_failures_count_.fetch_add(1, std::memory_order_relaxed);
       }
@@ -92,6 +97,7 @@ void Logger::log(const LogRecord& record) noexcept {
     dropped_records_count_.fetch_add(1, std::memory_order_relaxed);
   }
 }
+
 
 void Logger::set_parent(std::shared_ptr<Logger> parent) noexcept {
   std::lock_guard<std::mutex> lock(mutex_);
@@ -105,5 +111,32 @@ std::uint64_t Logger::sink_failures_count() const noexcept {
 std::uint64_t Logger::dropped_records_count() const noexcept {
   return dropped_records_count_.load(std::memory_order_relaxed);
 }
+
+void Logger::set_immediate_flush(bool enabled) noexcept {
+  std::lock_guard<std::mutex> lock(mutex_);
+  immediate_flush_ = enabled;
+  immediate_flush_overridden_ = true;
+}
+
+void Logger::clear_immediate_flush_override() noexcept {
+  std::lock_guard<std::mutex> lock(mutex_);
+  immediate_flush_overridden_ = false;
+}
+
+bool Logger::effective_immediate_flush() const noexcept {
+  std::lock_guard<std::mutex> lock(mutex_);
+
+  if (immediate_flush_overridden_) {
+    return immediate_flush_;
+  }
+
+  auto parent = parent_.lock();
+  if (parent) {
+    return parent->effective_immediate_flush();
+  }
+
+  return immediate_flush_;
+}
+
 
 }  // namespace sim_logger

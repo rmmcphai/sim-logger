@@ -8,11 +8,18 @@ add_executable(sim_logger_tests
   test_log_record.cpp
   test_sprint2_logger_registry.cpp
   test_pattern_formatter.cpp
+  test_console_sink.cpp
+  test_file_sink.cpp
+  test_immediate_flush.cpp
+  test_log_macros.cpp
+  test_c_api.c
+  test_c_api.cpp
 )
 
 target_link_libraries(sim_logger_tests
   PRIVATE
     sim_logger::core
+    sim_logger::c_api
     Catch2::Catch2WithMain
 )
 

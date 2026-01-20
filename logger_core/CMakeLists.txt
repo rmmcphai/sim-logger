@@ -7,6 +7,8 @@ add_library(logger_core
   src/logger_registry.cpp
   src/pattern_formatter.cpp
   src/global_time.cpp
+  src/console_sink.cpp
+  src/file_sink.cpp
 )
 
 

@@ -110,6 +110,33 @@ class Logger final {
   std::shared_ptr<Logger> parent() const noexcept;
 
   // --------------------------------------------------------------------------
+  // Immediate flush (per-logger, inheritable)
+  // --------------------------------------------------------------------------
+
+  /**
+   * @brief Override whether this logger flushes sinks after each record.
+   *
+   * When enabled, Logger::log(...) will call sink->flush() after sink->write(...)
+   * for each effective sink. This is intended for debugging and early integration.
+   *
+   * Default is false (performance).
+   */
+  void set_immediate_flush(bool enabled) noexcept;
+
+  /**
+   * @brief Clear the immediate-flush override so the logger may inherit from its parent.
+   *
+   * After clearing, effective_immediate_flush() returns:
+   * - parent's effective immediate-flush if a parent exists, otherwise the local default.
+   */
+  void clear_immediate_flush_override() noexcept;
+
+  /**
+   * @brief Returns whether this logger will flush after each emitted record.
+   */
+  bool effective_immediate_flush() const noexcept;
+
+  // --------------------------------------------------------------------------
   // Logging and stats
   // --------------------------------------------------------------------------
 
@@ -160,6 +187,13 @@ class Logger final {
 
   /// True if this logger's sinks are explicitly overridden.
   bool sinks_overridden_{false};
+
+  /// Immediate-flush setting (only used when immediate_flush_overridden_ is true,
+  /// or as the local default when there is no parent).
+  bool immediate_flush_{false};
+
+  /// True if this logger's immediate-flush behavior is explicitly overridden.
+  bool immediate_flush_overridden_{false};
 
   /// Weak parent pointer to avoid ownership cycles in the registry.
   std::weak_ptr<Logger> parent_;
